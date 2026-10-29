@@ -101,6 +101,8 @@ static void Task_EndIntroMovie(u8);
 
 // Painite Version intro video (replaces scenes 2 and 3)
 #define PAINITE_INTRO_VIDEO TRUE
+#define PAINITE_SPARKLES_HOLD 60 // frames of sparkles shown before cutting to the Painite scene
+static void Task_PainiteVideo_WaitFadeOut(u8);
 static void Task_PainiteVideo_Load(u8);
 static void Task_PainiteVideo_Play(u8);
 static void Task_PainiteVideo_End(u8);
@@ -1247,7 +1249,14 @@ static void Task_Scene1_WaterDrops(u8 taskId)
     if (gIntroFrameCounter == TIMER_SPARKLES)
         CreateTask(Task_CreateSparkles, 0);
 
-    if (gIntroFrameCounter > TIMER_SPARKLES)
+    // Painite Version: skip the pan up to the mountains and go straight
+    // from the water drops to the Painite scene
+    if (PAINITE_INTRO_VIDEO && gIntroFrameCounter > TIMER_SPARKLES + PAINITE_SPARKLES_HOLD)
+    {
+        BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_WHITEALPHA);
+        gTasks[taskId].func = Task_PainiteVideo_WaitFadeOut;
+    }
+    else if (!PAINITE_INTRO_VIDEO && gIntroFrameCounter > TIMER_SPARKLES)
     {
         gTasks[taskId].tBg2PosHi = 80;
         gTasks[taskId].tBg2PosLo = 0;
@@ -1408,6 +1417,12 @@ static void PainiteIntro_StartShot(u8 taskId)
     sPainiteShotStart = gMain.vblankCounter1;
     if (shot->effects & PAINITE_FX_FLASH)
         BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_WHITEALPHA);
+}
+
+static void Task_PainiteVideo_WaitFadeOut(u8 taskId)
+{
+    if (!gPaletteFade.active)
+        gTasks[taskId].func = Task_PainiteVideo_Load;
 }
 
 static void Task_PainiteVideo_Load(u8 taskId)
