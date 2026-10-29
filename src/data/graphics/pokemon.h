@@ -11344,6 +11344,11 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
 #endif //OW_PKMN_OBJECTS_SHARE_PALETTES
 #endif //OW_POKEMON_OBJECT_EVENTS
 
+    // Painite Version: Sableye Form P (uses the normal Sableye icon for now)
+    const u32 gMonFrontPic_SableyePainite[] = INCGFX_U32("graphics/pokemon/sableye/painite/anim_front.png", ".4bpp.smol");
+    const u16 gMonPalette_SableyePainite[] = INCGFX_U16("graphics/pokemon/sableye/painite/normal.pal", ".gbapal");
+    const u32 gMonBackPic_SableyePainite[] = INCGFX_U32("graphics/pokemon/sableye/painite/back.png", ".4bpp.smol");
+
 #if P_MEGA_EVOLUTIONS
     const u32 gMonFrontPic_SableyeMega[] = INCGFX_U32("graphics/pokemon/sableye/mega/front.png", ".4bpp.smol");
     const u16 gMonPalette_SableyeMega[] = INCGFX_U16("graphics/pokemon/sableye/mega/normal.pal", ".gbapal");

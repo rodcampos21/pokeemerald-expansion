@@ -2,6 +2,9 @@
 #include "overworld.h"
 #include "battle_pyramid.h"
 #include "battle_setup.h"
+#include "config/quickstart.h"
+#include "debug.h"
+#include "battle.h"
 #include "battle_util.h"
 #include "berry.h"
 #include "bg.h"
@@ -1883,8 +1886,31 @@ void CB2_OverworldBasic(void)
     OverworldBasic();
 }
 
+#if PAINITE_BATTLE_TEST
+static EWRAM_DATA u16 sPainiteTestTimer = 0;
+static EWRAM_DATA bool8 sPainiteTestDone = FALSE;
+static void PainiteBattleTest(void)
+{
+    if (sPainiteTestDone || gPaletteFade.active || ++sPainiteTestTimer < 90)
+        return;
+    sPainiteTestDone = TRUE;
+    ZeroPlayerPartyMons();
+    CreateMonWithIVs(&gPlayerParty[0], SPECIES_SABLEYE_PAINITE, 30, 0, OTID_STRUCT_PLAYER_ID, 20);
+    GiveMonInitialMoveset(&gPlayerParty[0]);
+    ZeroEnemyPartyMons();
+    CreateMonWithIVs(&gEnemyParty[0], SPECIES_SABLEYE_PAINITE, 28, 0, OTID_STRUCT_RANDOM_NO_SHINY, 20);
+    GiveMonInitialMoveset(&gEnemyParty[0]);
+    gIsDebugBattle = TRUE;                        // use the forced environment below
+    gBattleEnvironment = BATTLE_ENVIRONMENT_GRASS;
+    BattleSetup_StartScriptedWildBattle();
+}
+#endif
+
 void CB2_Overworld(void)
 {
+#if PAINITE_BATTLE_TEST
+    PainiteBattleTest();
+#endif
     bool32 fading = (gPaletteFade.active != 0);
     if (fading)
         SetVBlankCallback(NULL);

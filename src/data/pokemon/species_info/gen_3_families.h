@@ -4653,6 +4653,71 @@ const struct SpeciesInfo gSpeciesInfoGen3[] =
         .formChangeTable = sSableyeFormChangeTable,
     },
 
+    // Painite Version: Sableye Form P (stats/moves copied from Sableye for testing)
+    [SPECIES_SABLEYE_PAINITE] =
+    {
+        .baseHP        = 50,
+        .baseAttack    = 75,
+        .baseDefense   = 75,
+        .baseSpeed     = 50,
+        .baseSpAttack  = 65,
+        .baseSpDefense = 65,
+        .types = MON_TYPES(TYPE_DARK, TYPE_GHOST),
+        .catchRate = 45,
+        .expYield = 133,
+        .evYield_Attack = 1,
+        .evYield_Defense = 1,
+        .genderRatio = PERCENT_FEMALE(50),
+        .eggCycles = 25,
+        .friendship = 35,
+        .growthRate = GROWTH_MEDIUM_SLOW,
+        .eggGroups = MON_EGG_GROUPS(EGG_GROUP_HUMAN_LIKE),
+        .abilities = { ABILITY_KEEN_EYE, ABILITY_STALL, ABILITY_PRANKSTER },
+        .bodyColor = BODY_COLOR_PURPLE,
+        .speciesName = _("Sableye"),
+        .cryId = CRY_SABLEYE,
+        .natDexNum = NATIONAL_DEX_SABLEYE,
+        .categoryName = _("Darkness"),
+        .height = 5,
+        .weight = 1610,
+        .description = COMPOUND_STRING(
+            "Painite crystals grew from the gem on\n"
+            "its chest. It wields them as shields\n"
+            "and grins at anything that dares to\n"
+            "come near its hoard."),
+        .pokemonScale = 451,
+        .pokemonOffset = 17,
+        .trainerScale = 256,
+        .trainerOffset = 0,
+        .frontPic = gMonFrontPic_SableyePainite,
+        .frontPicSize = MON_COORDS_SIZE(64, 64),
+        .frontPicYOffset = 1,
+        .frontAnimFrames = ANIM_FRAMES(
+            ANIMCMD_FRAME(0, 10),
+            ANIMCMD_FRAME(1, 10),
+            ANIMCMD_FRAME(0, 10),
+            ANIMCMD_FRAME(1, 10),
+            ANIMCMD_FRAME(0, 10),
+        ),
+        .frontAnimId = ANIM_GLOW_BLACK,
+        .backPic = gMonBackPic_SableyePainite,
+        .backPicSize = MON_COORDS_SIZE(64, 64),
+        .backPicYOffset = 0,
+        .backAnimId = BACK_ANIM_H_VIBRATE,
+        .palette = gMonPalette_SableyePainite,
+        .shinyPalette = gMonPalette_SableyePainite,
+        .iconSprite = gMonIcon_Sableye,
+        .iconPalIndex = 2,
+        .pokemonJumpType = PKMN_JUMP_TYPE_NORMAL,
+        SHADOW(2, 7, SHADOW_SIZE_M)
+        FOOTPRINT(Sableye)
+        .levelUpLearnset = sSableyeLevelUpLearnset,
+        .teachableLearnset = sSableyeTeachableLearnset,
+        .eggMoveLearnset = sSableyeEggMoveLearnset,
+        .formSpeciesIdTable = sSableyeFormSpeciesIdTable,
+        .formChangeTable = sSableyeFormChangeTable,
+    },
+
 #if P_MEGA_EVOLUTIONS
     [SPECIES_SABLEYE_MEGA] =
     {

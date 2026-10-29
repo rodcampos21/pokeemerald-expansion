@@ -869,6 +869,7 @@ static const u16 sSableyeFormSpeciesIdTable[] = {
 #if P_MEGA_EVOLUTIONS
     SPECIES_SABLEYE_MEGA,
 #endif
+    SPECIES_SABLEYE_PAINITE,
     FORM_SPECIES_END,
 };
 #endif //P_FAMILY_SABLEYE

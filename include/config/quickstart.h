@@ -13,4 +13,7 @@
 #define QUICKSTART_HUD_X             (DISPLAY_WIDTH - 32) // Quickstart HUD X Position
 #define QUICKSTART_HUD_Y             (16)                 // Quickstart HUD Y Position
 
+// Painite Version test: after Quickstart, start a wild battle Sableye Form P vs Sableye Form P
+#define PAINITE_BATTLE_TEST          FALSE
+
 #endif // GUARD_CONFIG_QUICKSTART_H
