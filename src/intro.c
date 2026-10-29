@@ -1329,7 +1329,8 @@ static void Task_Scene1_PanUp(u8 taskId)
         gTasks[taskId].tBg3PosLo = offset;
         SetGpuReg(REG_OFFSET_BG0VOFS, gTasks[taskId].tBg3PosHi);
 
-        if (gIntroFrameCounter == TIMER_FLYGON_SILHOUETTE_APPEAR)
+        // Painite Version: no flying silhouette over the mountains
+        if (!PAINITE_INTRO_VIDEO && gIntroFrameCounter == TIMER_FLYGON_SILHOUETTE_APPEAR)
         {
             // Show Flygon silhouette
             u8 spriteId = CreateSprite(&sSpriteTemplate_FlygonSilhouette, 120, DISPLAY_HEIGHT, 10);
