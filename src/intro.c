@@ -1359,64 +1359,121 @@ static void Task_Scene1_End(u8 taskId)
 }
 
 // ---------------------------------------------------------------------------
-// Painite Version intro video
+// Painite Version intro
 // Replaces the bike ride (scene 2) and Groudon/Kyogre/Rayquaza (scene 3).
-// Frames are 240x160 8bpp bitmaps, LZ77-compressed, shown in bitmap mode 4
-// with double buffering: the next frame is decompressed into the hidden page
-// while the current one is on screen, then the pages are swapped.
+// Plays a list of keyframe stills (see data/intro_painite_video.h) in bitmap
+// mode 4. Each still is decompressed into the hidden page while the current
+// one is on screen, then the pages are swapped. BG2's affine registers give
+// the zoom and shake effects.
 // ---------------------------------------------------------------------------
 
 #define DISPCNT_FRAME_1_SELECT 0x0010
-#define VIDEO_PAGE(n) ((void *)(VRAM + ((n) & 1) * 0xA000))
+#define PAINITE_PAGE(n) ((void *)(VRAM + ((n) & 1) * 0xA000))
 
-#define tVideoFrame   data[0]
-#define tVideoDecoded data[1]
+#define tShot        data[0]
+#define tShownPage   data[1]
+#define tNextDecoded data[2]
+#define tShakeSeed   data[3]
 
-static EWRAM_DATA u32 sPainiteVideoStartFrame = 0;
+static EWRAM_DATA u32 sPainiteShotStart = 0;
+
+static void PainiteIntro_SetCamera(u32 zoom, s32 offsetX, s32 offsetY)
+{
+    // zoom is Q8 (256 = 1x), centered on the screen
+    s32 step = 0x10000 / zoom;
+    s32 x = (DISPLAY_WIDTH / 2) * 256 - (DISPLAY_WIDTH / 2) * step + offsetX * 256;
+    s32 y = (DISPLAY_HEIGHT / 2) * 256 - (DISPLAY_HEIGHT / 2) * step + offsetY * 256;
+
+    SetGpuReg(REG_OFFSET_BG2PA, step);
+    SetGpuReg(REG_OFFSET_BG2PB, 0);
+    SetGpuReg(REG_OFFSET_BG2PC, 0);
+    SetGpuReg(REG_OFFSET_BG2PD, step);
+    SetGpuReg(REG_OFFSET_BG2X_L, x & 0xFFFF);
+    SetGpuReg(REG_OFFSET_BG2X_H, (x >> 16) & 0x0FFF);
+    SetGpuReg(REG_OFFSET_BG2Y_L, y & 0xFFFF);
+    SetGpuReg(REG_OFFSET_BG2Y_H, (y >> 16) & 0x0FFF);
+}
+
+static void PainiteIntro_ShowPage(u32 page)
+{
+    SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_4 | DISPCNT_BG2_ON | (page ? DISPCNT_FRAME_1_SELECT : 0));
+}
+
+static void PainiteIntro_StartShot(u8 taskId)
+{
+    s16 *data = gTasks[taskId].data;
+    const struct PainiteIntroShot *shot = &sPainiteIntroShots[tShot];
+
+    sPainiteShotStart = gMain.vblankCounter1;
+    if (shot->effects & PAINITE_FX_FLASH)
+        BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_WHITEALPHA);
+}
 
 static void Task_PainiteVideo_Load(u8 taskId)
 {
+    s16 *data = gTasks[taskId].data;
+
     IntroResetGpuRegs();
     SetVBlankCallback(NULL);
     ResetSpriteData();
     FreeAllSpritePalettes();
     DmaClear32(3, VRAM, 0x14000);
     LoadPalette(sPainiteVideoPal, BG_PLTT_ID(0), 256 * sizeof(u16));
-    LZ77UnCompVram(sPainiteVideoFrames[0], VIDEO_PAGE(0));
-    SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_4 | DISPCNT_BG2_ON);
+    LZ77UnCompVram(sPainiteKeyframes[sPainiteIntroShots[0].keyframe], PAINITE_PAGE(0));
+    PainiteIntro_SetCamera(256, 0, 0);
+    PainiteIntro_ShowPage(0);
     SetVBlankCallback(VBlankCB_Intro);
     BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_WHITEALPHA);
     m4aSongNumStart(MUS_INTRO_BATTLE);
-    sPainiteVideoStartFrame = gMain.vblankCounter1;
-    gTasks[taskId].tVideoFrame = 1;
-    gTasks[taskId].tVideoDecoded = FALSE;
+    tShot = 0;
+    tShownPage = 0;
+    tNextDecoded = FALSE;
+    tShakeSeed = 0;
+    PainiteIntro_StartShot(taskId);
     gTasks[taskId].func = Task_PainiteVideo_Play;
 }
 
 static void Task_PainiteVideo_Play(u8 taskId)
 {
     s16 *data = gTasks[taskId].data;
-    u32 elapsed = gMain.vblankCounter1 - sPainiteVideoStartFrame;
+    const struct PainiteIntroShot *shot = &sPainiteIntroShots[tShot];
+    u32 elapsed = gMain.vblankCounter1 - sPainiteShotStart;
+    u32 zoom = 256;
+    s32 shakeX = 0, shakeY = 0;
 
-    // Prepare the next frame on the hidden page
-    if (!tVideoDecoded && tVideoFrame < PAINITE_VIDEO_FRAME_COUNT)
+    // Camera effects for the current shot
+    if (shot->effects & PAINITE_FX_ZOOM)
+        zoom = 256 + (16 * min(elapsed, shot->duration)) / shot->duration;
+    if (shot->effects & PAINITE_FX_SHAKE)
     {
-        LZ77UnCompVram(sPainiteVideoFrames[tVideoFrame], VIDEO_PAGE(tVideoFrame));
-        tVideoDecoded = TRUE;
+        static const s8 sShake[] = {2, -2, 1, -1, 2, 0, -2, 1};
+        tShakeSeed++;
+        shakeX = sShake[tShakeSeed & 7];
+        shakeY = sShake[(tShakeSeed + 3) & 7];
+        zoom = max(zoom, 264); // hide the edges while shaking
+    }
+    PainiteIntro_SetCamera(zoom, shakeX, shakeY);
+
+    // Prepare the next still on the hidden page
+    if (!tNextDecoded && tShot + 1 < (s16)ARRAY_COUNT(sPainiteIntroShots))
+    {
+        LZ77UnCompVram(sPainiteKeyframes[sPainiteIntroShots[tShot + 1].keyframe], PAINITE_PAGE(tShownPage ^ 1));
+        tNextDecoded = TRUE;
     }
 
-    if (elapsed >= (u32)tVideoFrame * PAINITE_VIDEO_VBLANKS_PER_FRAME)
+    if (elapsed >= shot->duration)
     {
-        if (tVideoFrame >= PAINITE_VIDEO_FRAME_COUNT)
+        if (tShot + 1 >= (s16)ARRAY_COUNT(sPainiteIntroShots))
         {
             BeginNormalPaletteFade(PALETTES_ALL, 2, 0, 16, RGB_WHITEALPHA);
             gTasks[taskId].func = Task_PainiteVideo_End;
             return;
         }
-        SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_4 | DISPCNT_BG2_ON
-                                    | ((tVideoFrame & 1) ? DISPCNT_FRAME_1_SELECT : 0));
-        tVideoFrame++;
-        tVideoDecoded = FALSE;
+        tShot++;
+        tShownPage ^= 1;
+        tNextDecoded = FALSE;
+        PainiteIntro_ShowPage(tShownPage);
+        PainiteIntro_StartShot(taskId);
     }
 }
 
@@ -1426,8 +1483,10 @@ static void Task_PainiteVideo_End(u8 taskId)
         gTasks[taskId].func = Task_EndIntroMovie;
 }
 
-#undef tVideoFrame
-#undef tVideoDecoded
+#undef tShot
+#undef tShownPage
+#undef tNextDecoded
+#undef tShakeSeed
 
 static void Task_Scene2_Load(u8 taskId)
 {
