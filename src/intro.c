@@ -99,6 +99,13 @@ static void Task_Scene3_LoadRayquazaAttack(u8);
 static void Task_Scene3_Rayquaza(u8);
 static void Task_EndIntroMovie(u8);
 
+// Painite Version intro video (replaces scenes 2 and 3)
+#define PAINITE_INTRO_VIDEO TRUE
+static void Task_PainiteVideo_Load(u8);
+static void Task_PainiteVideo_Play(u8);
+static void Task_PainiteVideo_End(u8);
+#include "data/intro_painite_video.h"
+
 // Scene 3 supplemental functions
 static void CreateGroudonRockSprites(u8);
 static void CreateKyogreBubbleSprites_Body(u8);
@@ -1343,8 +1350,84 @@ static void Task_Scene1_PanUp(u8 taskId)
 static void Task_Scene1_End(u8 taskId)
 {
     if (gIntroFrameCounter > TIMER_START_SCENE_2)
-        gTasks[taskId].func = Task_Scene2_Load;
+    {
+        if (PAINITE_INTRO_VIDEO)
+            gTasks[taskId].func = Task_PainiteVideo_Load;
+        else
+            gTasks[taskId].func = Task_Scene2_Load;
+    }
 }
+
+// ---------------------------------------------------------------------------
+// Painite Version intro video
+// Replaces the bike ride (scene 2) and Groudon/Kyogre/Rayquaza (scene 3).
+// Frames are 240x160 8bpp bitmaps, LZ77-compressed, shown in bitmap mode 4
+// with double buffering: the next frame is decompressed into the hidden page
+// while the current one is on screen, then the pages are swapped.
+// ---------------------------------------------------------------------------
+
+#define DISPCNT_FRAME_1_SELECT 0x0010
+#define VIDEO_PAGE(n) ((void *)(VRAM + ((n) & 1) * 0xA000))
+
+#define tVideoFrame   data[0]
+#define tVideoDecoded data[1]
+
+static EWRAM_DATA u32 sPainiteVideoStartFrame = 0;
+
+static void Task_PainiteVideo_Load(u8 taskId)
+{
+    IntroResetGpuRegs();
+    SetVBlankCallback(NULL);
+    ResetSpriteData();
+    FreeAllSpritePalettes();
+    DmaClear32(3, VRAM, 0x14000);
+    LoadPalette(sPainiteVideoPal, BG_PLTT_ID(0), 256 * sizeof(u16));
+    LZ77UnCompVram(sPainiteVideoFrames[0], VIDEO_PAGE(0));
+    SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_4 | DISPCNT_BG2_ON);
+    SetVBlankCallback(VBlankCB_Intro);
+    BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_WHITEALPHA);
+    m4aSongNumStart(MUS_INTRO_BATTLE);
+    sPainiteVideoStartFrame = gMain.vblankCounter1;
+    gTasks[taskId].tVideoFrame = 1;
+    gTasks[taskId].tVideoDecoded = FALSE;
+    gTasks[taskId].func = Task_PainiteVideo_Play;
+}
+
+static void Task_PainiteVideo_Play(u8 taskId)
+{
+    s16 *data = gTasks[taskId].data;
+    u32 elapsed = gMain.vblankCounter1 - sPainiteVideoStartFrame;
+
+    // Prepare the next frame on the hidden page
+    if (!tVideoDecoded && tVideoFrame < PAINITE_VIDEO_FRAME_COUNT)
+    {
+        LZ77UnCompVram(sPainiteVideoFrames[tVideoFrame], VIDEO_PAGE(tVideoFrame));
+        tVideoDecoded = TRUE;
+    }
+
+    if (elapsed >= (u32)tVideoFrame * PAINITE_VIDEO_VBLANKS_PER_FRAME)
+    {
+        if (tVideoFrame >= PAINITE_VIDEO_FRAME_COUNT)
+        {
+            BeginNormalPaletteFade(PALETTES_ALL, 2, 0, 16, RGB_WHITEALPHA);
+            gTasks[taskId].func = Task_PainiteVideo_End;
+            return;
+        }
+        SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_4 | DISPCNT_BG2_ON
+                                    | ((tVideoFrame & 1) ? DISPCNT_FRAME_1_SELECT : 0));
+        tVideoFrame++;
+        tVideoDecoded = FALSE;
+    }
+}
+
+static void Task_PainiteVideo_End(u8 taskId)
+{
+    if (!gPaletteFade.active)
+        gTasks[taskId].func = Task_EndIntroMovie;
+}
+
+#undef tVideoFrame
+#undef tVideoDecoded
 
 static void Task_Scene2_Load(u8 taskId)
 {
